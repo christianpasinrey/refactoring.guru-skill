@@ -1,0 +1,5 @@
+# Normalise to LF in the repository; shell scripts must stay LF on checkout
+# so the shebang works on Linux and macOS.
+* text=auto eol=lf
+*.sh text eol=lf
+*.ps1 text eol=crlf
