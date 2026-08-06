@@ -6,7 +6,8 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-8A63D2)](https://docs.claude.com/en/docs/claude-code)
 [![Standalone](https://img.shields.io/badge/dependencies-none-brightgreen)](#installation)
 [![Catalogues](https://img.shields.io/badge/catalogues-8-blue)](#whats-inside)
-[![References](https://img.shields.io/badge/reference%20files-13-blue)](#repository-layout)
+[![References](https://img.shields.io/badge/reference%20files-23-blue)](#repository-layout)
+[![Stacks](https://img.shields.io/badge/framework%20idioms-10%20stacks-blue)](#whats-inside)
 
 > [!NOTE]
 > This skill is **standalone**. It needs no plugin, no MCP server, no other skill, and no runtime. It is Markdown that changes how the model reasons about design.
@@ -174,7 +175,7 @@ Plus four files that exist to keep the rest honest:
 |---|---|
 | [`refactoring-workflow.md`](skills/patterns-and-refactoring/references/refactoring-workflow.md) | Seams, characterization tests, the Mikado Method, legacy modernization sequencing, and when *not* to refactor |
 | [`antipatterns.md`](skills/patterns-and-refactoring/references/antipatterns.md) | Pattern anti-patterns and structural anti-patterns, with a 7-point pre-flight checklist |
-| [`framework-idioms.md`](skills/patterns-and-refactoring/references/framework-idioms.md) | What Laravel/PHP and Vue/TypeScript already implement — read before hand-rolling anything |
+| [`framework-idioms.md`](skills/patterns-and-refactoring/references/framework-idioms.md) | Router + cross-stack table, into **10 per-stack files** covering what your framework already implements — read before hand-rolling anything |
 | [`concurrency-patterns.md`](skills/patterns-and-refactoring/references/concurrency-patterns.md) · [`functional-patterns.md`](skills/patterns-and-refactoring/references/functional-patterns.md) · [`frontend-patterns.md`](skills/patterns-and-refactoring/references/frontend-patterns.md) | Domain-specific catalogues |
 
 <details>
@@ -332,7 +333,18 @@ refactoring.guru-skill/
             ├── refactoring-techniques.md
             ├── refactoring-workflow.md
             ├── antipatterns.md
-            └── framework-idioms.md
+            ├── framework-idioms.md      # router + cross-stack table
+            └── idioms/
+                ├── laravel-php.md       # Laravel · Symfony · PHP
+                ├── django-python.md     # Django · FastAPI · Python
+                ├── rails-ruby.md        # Rails · Ruby
+                ├── spring-java.md       # Spring · Java · Kotlin
+                ├── dotnet-csharp.md     # ASP.NET Core · C#
+                ├── node-typescript.md   # NestJS · Express · Node
+                ├── vue-typescript.md    # Vue · Nuxt
+                ├── react-typescript.md  # React · Next.js
+                ├── go.md
+                └── rust.md
 ```
 
 ---
@@ -398,10 +410,10 @@ An entry describing only intent and structure will be asked for revision. That i
 
 Useful contributions:
 
-- [ ] Framework idioms for stacks not yet covered (Django, Rails, Spring, .NET, NestJS)
-- [ ] Language-specific pattern replacements (Rust, Go, Kotlin)
+- [x] ~~Framework idioms for the major server and frontend stacks~~ — 10 stacks covered
+- [ ] Framework idioms for stacks not yet covered (Elixir/Phoenix, Swift, Flutter, Angular, Laravel Livewire specifics)
 - [ ] Additional anti-patterns with concrete symptoms and cures
-- [ ] Corrections — particularly where a "do NOT use when" is wrong or too absolute
+- [ ] Corrections — particularly where a "do NOT use when" is wrong or too absolute, or where a framework idiom is out of date
 
 Open an issue before a large addition so the scope can be agreed first.
 

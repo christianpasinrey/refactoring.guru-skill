@@ -137,10 +137,14 @@ Most patterns already exist in your framework. Rebuilding one by hand is not "ap
 pattern", it is duplicating infrastructure you then have to maintain.
 
 Read [framework-idioms.md](references/framework-idioms.md) before writing pattern scaffolding.
-Laravel's service container *is* Abstract Factory + DI; its `Pipeline` *is* Chain of
-Responsibility; Eloquent *is* Active Record, which is why layering Repository on top of it is
-a decision needing justification rather than a default; Vue reactivity and Livewire events
-*are* Observer.
+It routes to a per-stack file — Laravel/PHP, Django/Python, Rails/Ruby, Spring/Java,
+ASP.NET/C#, Node/TypeScript, Vue, React, Go, Rust — and carries a cross-stack table of where
+each ecosystem hides the same pattern.
+
+Examples of what is already there: Spring's `*Template` classes *are* Template Method; .NET's
+`DbSet<T>` *is* a Repository and `DbContext` *is* a Unit of Work; Laravel's `Pipeline` and Go's
+`http.Handler` wrapping *are* Chain of Responsibility; Django signals and Vue reactivity *are*
+Observer; Rust's `Option<T>` *is* Null Object enforced by the compiler.
 
 Naming the pattern the framework implements is valuable — it tells the reader why the code is
 shaped that way. Reimplementing it is not.
@@ -248,7 +252,7 @@ Load only what you need. `SKILL.md` routes; the references carry the depth.
 | [refactoring-techniques.md](references/refactoring-techniques.md) | You know the smell and need the mechanical cure |
 | [refactoring-workflow.md](references/refactoring-workflow.md) | Refactoring safely: seams, characterization tests, large legacy work |
 | [antipatterns.md](references/antipatterns.md) | You are about to add indirection and want the gate applied honestly |
-| [framework-idioms.md](references/framework-idioms.md) | Before hand-rolling any pattern in Laravel, Vue, or TypeScript |
+| [framework-idioms.md](references/framework-idioms.md) | **Before hand-rolling any pattern.** Routes to one of 10 per-stack files in [`references/idioms/`](references/idioms/) |
 
 ---
 

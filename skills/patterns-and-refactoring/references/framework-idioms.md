@@ -1,114 +1,34 @@
-# Framework idioms
+# Framework idioms — router
 
-**Read this before hand-rolling any pattern.** Most GoF patterns already exist in your
-framework, usually better tested than your version will be. Naming the pattern the framework
-implements is valuable — it explains why the code is shaped that way. Reimplementing it is not.
+**Read the file for your stack before hand-rolling any pattern.** Most GoF patterns already
+exist in your framework, better tested than your version will be.
 
----
-
-## Laravel / PHP
-
-### What the framework already gives you
-
-| Pattern | Where it already lives | Do this, not that |
-|---|---|---|
-| **Abstract Factory + DI** | The service container | `$this->app->bind(Port::class, Adapter::class)`. Do not write a factory class to pick an implementation |
-| **Factory Method** | `bind()` with a closure; contextual binding | Contextual binding gives different implementations per consumer |
-| **Singleton** | `$this->app->singleton()` | One instance, injected, testable. Never a static `getInstance()` |
-| **Strategy** | Container binding by key, or the Manager pattern (`Cache`, `Queue`, `Mail`) | Extend an existing manager with `extend()` before writing a new resolver |
-| **Chain of Responsibility** | Middleware; `Illuminate\Pipeline\Pipeline` | `Pipeline::send($x)->through([...])->thenReturn()`. Do not build a handler chain by hand |
-| **Observer** | Events + listeners; model observers; `Model::booted()` | Model events for lifecycle; domain events for cross-module fan-out |
-| **Command** | Queued jobs; console commands; `Bus::dispatch()` | A job *is* a Command object: serialisable, retryable, delayable |
-| **Active Record** | Eloquent | Accept it. See below on Repository |
-| **Data Mapper** | Doctrine, if you deliberately chose it | Do not simulate it on top of Eloquent |
-| **Unit of Work** | `DB::transaction()`; Doctrine's `EntityManager` | Eloquent has no change tracker — the transaction is the boundary |
-| **Query Object** | Eloquent scopes; custom `Builder` classes | A scope is a composable query object. Prefer this over a repository method dump |
-| **Specification** | Scopes + `when()`; conditional builder chains | Composable rules without a specification framework |
-| **Decorator** | Container `extend()`; middleware; cache/log wrappers | `$this->app->extend(Client::class, fn($c) => new LoggingClient($c))` |
-| **Proxy** | Eloquent lazy relations; `Lazy` collections; deferred providers | Already there — the risk is N+1, not the pattern |
-| **Adapter** | Filesystem (Flysystem), Mail, Queue, Cache drivers | Write a driver, register it with `extend()` |
-| **Facade** *(GoF)* | Service classes with a narrow API | **Laravel Facades are not the GoF Facade** — they are a static Service Locator over the container |
-| **Template Method** | Abstract base classes: `FormRequest`, `TestCase`, `Notification` | Extend the provided base rather than inventing a parallel lifecycle |
-| **Builder** | Query Builder; `Notification`/`Mailable` fluent APIs | The idiom is fluent methods returning `$this`, then a terminal method |
-| **Iterator** | `IteratorAggregate`, generators, `cursor()`, `lazy()`, `chunk()` | `Model::lazy()` streams rows; never `->all()` on a large table |
-| **Value Object** | Custom casts (`CastsAttributes`); `Stringable`; enums | Casts turn a column into a value object transparently |
-| **Null Object / Special Case** | `optional()`, nullsafe `?->`, `Collection::whenEmpty()` | |
-| **Repository** | *Not provided, deliberately* | See below |
-| **Circuit Breaker / Retry** | `Http::retry()`; `RateLimiter`; job `backoff()` and `retryUntil()` | Built in. Do not hand-roll retry loops |
-| **Transactional Outbox** | Not provided | Implement it — see [distributed-patterns.md](distributed-patterns.md#transactional-outbox) |
-| **Front Controller / Page Controller** | `public/index.php` + routing; invokable controllers | |
-| **Template View / Two Step View** | Blade; layouts and components | |
-| **Client Session State** | Sanctum tokens, JWT | vs `session` driver = Server/Database Session State |
-
-### Repository over Eloquent: when is it justified?
-
-The most-argued decision in Laravel codebases. Be explicit about which case you are in.
-
-**Justified when:**
-- The domain must be unit-testable with no database *and* the rules are complex enough for that to pay off.
-- You are behind a Ports & Adapters boundary and the repository is the port.
-- Persistence genuinely may change — not "in theory", but as a known requirement.
-- You are writing a package that must not force a persistence choice on consumers.
-
-**Not justified when:**
-- "It is best practice." Eloquent *is* Active Record; the pattern is already chosen.
-- "For testing." `RefreshDatabase` with an in-memory or transactional database is usually faster to write and catches more than mocked repositories, which mostly assert that your mocks agree with themselves.
-- "To swap the database." You will not, and the ORM was already that abstraction.
-
-**The middle path most teams should take:** Eloquent models + a thin Service/Action layer for
-use cases + query scopes for named queries. You get testable use cases and named queries
-without a persistence abstraction that fights the framework.
-
-### PHP language features that replace patterns
-
-| Feature | Replaces |
-|---|---|
-| **Enums** (backed, with methods) | Replace Type Code with Class; State when transitions are simple; whole Strategy hierarchies |
-| **First-class callable syntax** `$obj->method(...)` | Strategy and Command objects for single-method cases |
-| **Readonly properties / classes** | Immutable value objects without hand-written guards |
-| **Constructor property promotion** | Boilerplate in value objects and DTOs |
-| **Named arguments** | Long Parameter List, in many cases, and the Builder for simple objects |
-| **Attributes** | Metadata Mapping; declarative routing, validation and listeners |
-| **Generators** | Iterator; streaming large datasets without memory blowup |
-| **`match`** | Simple Strategy dispatch. **Two branches do not need a pattern** |
-| **Interfaces + union types** | Sum types, approximately |
+Naming the pattern the framework implements is valuable — it explains why the code is shaped
+that way. Reimplementing it is not.
 
 ---
 
-## Vue / TypeScript frontend
+## Pick your stack
 
-| Pattern | Where it already lives |
+| Stack | File |
 |---|---|
-| **Observer** | Reactivity: `ref`, `reactive`, `computed`, `watch` |
-| **Strategy** | A composable or a function passed as a prop |
-| **Template Method** | Scoped slots — the parent owns the algorithm, the consumer supplies the steps |
-| **Composite** | Recursive components; the component tree itself |
-| **Decorator** | Wrapper components; composables composing other composables |
-| **Registry / Provider** | `provide` / `inject`; Pinia stores |
-| **Command** | Store actions; dispatched events |
-| **Facade** | A composable exposing a narrow API over complex logic |
-| **Proxy** | Vue's reactivity is *literally* a `Proxy` |
-| **State** | State machine libraries (XState), or a discriminated union in the store |
-| **Adapter** | An API client layer mapping server DTOs to view models |
-| **Memento** | History in a store; undo stacks |
+| **Laravel · Symfony · PHP** | [idioms/laravel-php.md](idioms/laravel-php.md) |
+| **Django · FastAPI · Python** | [idioms/django-python.md](idioms/django-python.md) |
+| **Rails · Ruby** | [idioms/rails-ruby.md](idioms/rails-ruby.md) |
+| **Spring · Java · Kotlin** | [idioms/spring-java.md](idioms/spring-java.md) |
+| **ASP.NET Core · C#** | [idioms/dotnet-csharp.md](idioms/dotnet-csharp.md) |
+| **NestJS · Express · Node/TypeScript** | [idioms/node-typescript.md](idioms/node-typescript.md) |
+| **Vue · Nuxt · TypeScript** | [idioms/vue-typescript.md](idioms/vue-typescript.md) |
+| **React · Next.js · TypeScript** | [idioms/react-typescript.md](idioms/react-typescript.md) |
+| **Go** | [idioms/go.md](idioms/go.md) |
+| **Rust** | [idioms/rust.md](idioms/rust.md) |
 
-**TypeScript features that replace patterns:**
-
-| Feature | Replaces |
-|---|---|
-| **Discriminated unions + exhaustive `switch`** | Visitor, State, and most polymorphic dispatch |
-| **Branded / nominal types** | Value objects for identifiers |
-| **`satisfies` and `as const`** | Runtime config validation |
-| **Generics with constraints** | Template Method, type-safely |
-| **Utility types** (`Pick`, `Omit`, `Partial`) | Hand-written DTO variants |
-| **Zod / Valibot schemas** | Parse-don't-validate at the boundary; derived types for free |
-
-**Do not** hand-roll an event emitter, a DI container, or a state store in a Vue app. All three
-exist, are tested, and integrate with devtools.
+Stack not listed? The rule below still applies — check the framework's own vocabulary for the
+pattern before building it. Frameworks converge on the same solutions; the names differ.
 
 ---
 
-## The rule
+## The rule, regardless of stack
 
 ```mermaid
 flowchart TD
@@ -121,14 +41,66 @@ flowchart TD
     F -->|Yes| H[Implement it — idiomatically<br/>for this framework.]
 ```
 
-When you *do* implement a pattern, implement it the way the framework would: register it in the
-container, follow the existing naming, use the provided base classes. A technically correct
-pattern implemented against the grain of the framework is harder to maintain than a slightly
-less pure one that looks like the rest of the codebase.
+When you *do* implement a pattern, implement it the way the framework would: register it where
+the framework registers things, follow the existing naming, extend the provided base classes.
+
+**A technically correct pattern implemented against the grain of the framework is harder to
+maintain than a slightly less pure one that looks like the rest of the codebase.** Every
+developer who joins already knows the framework's idiom; nobody knows yours.
 
 ---
 
-## Sources
+## The three questions that repeat across every stack
 
-Laravel documentation and framework source · Vue and TypeScript documentation · PHP RFCs for the
-language features listed. Original commentary.
+Each stack file answers these in its own terms, because the answers differ and the arguments
+are perennial.
+
+### 1. Is a Repository justified over the framework's ORM?
+
+Depends entirely on whether the ORM is Active Record (Eloquent, Django ORM, ActiveRecord) or
+Data Mapper (Doctrine, Hibernate, EF Core). Layering a Repository over an Active Record ORM
+means paying for both patterns and getting the benefits of neither. Over a Data Mapper it is
+often redundant, because the mapper *is* the abstraction.
+
+See [enterprise-patterns.md](enterprise-patterns.md#data-source-architecture).
+
+### 2. Where does business logic live?
+
+Every ecosystem has this argument under a different name: fat models vs service objects, use
+cases vs application services, "skinny controllers" vs "skinny everything". The honest answer
+is in [enterprise-patterns.md](enterprise-patterns.md#domain-logic): pick by the complexity of
+the *rules*, not the size of the app.
+
+### 3. What does dependency injection cost here?
+
+Some stacks give you a container for free and injection is the path of least resistance
+(Spring, .NET, Laravel, NestJS). Others make explicit passing more idiomatic (Go, Rust, much
+of Python). Fighting the local default produces code nobody in that ecosystem enjoys reading.
+
+---
+
+## Cross-stack quick reference
+
+Where each ecosystem hides the same pattern:
+
+| Pattern | PHP/Laravel | Python/Django | Ruby/Rails | Java/Spring | C#/.NET | Node/Nest | Go | Rust |
+|---|---|---|---|---|---|---|---|---|
+| **DI container** | Service container | Manual / `dependency-injector` | Manual / initializers | `ApplicationContext` | `IServiceCollection` | Nest DI | Explicit args | Explicit args |
+| **Chain of Responsibility** | Middleware, `Pipeline` | Middleware | Rack middleware, `around_action` | `HandlerInterceptor`, filters | Middleware pipeline | Middleware, guards, interceptors | `http.Handler` wrapping | Tower `Layer` |
+| **Observer** | Events + listeners | Signals | ActiveSupport notifications, callbacks | `ApplicationEvent` | `MediatR` notifications | `EventEmitter2` | Channels | Channels, `tokio::sync` |
+| **Command** | Queued jobs | Celery tasks | ActiveJob | `@Async`, Spring Batch | `MediatR` `IRequest` | Bull jobs, CQRS module | Worker + channel | Task + channel |
+| **Active Record** | Eloquent | Django ORM | ActiveRecord | — | — | — | — | — |
+| **Data Mapper** | Doctrine | SQLAlchemy | — | Hibernate/JPA | EF Core | TypeORM, Prisma | sqlc, sqlx | Diesel, SeaORM |
+| **Unit of Work** | `DB::transaction` | `atomic()` | `transaction` | `@Transactional` | `SaveChanges` | `QueryRunner` | `sql.Tx` | Transaction guard |
+| **Decorator** | Container `extend()` | Decorators, mixins | Modules, `prepend` | `@Aspect` (AOP) | Decorators, `IPipelineBehavior` | Interceptors | Struct embedding | Trait impl / newtype |
+| **Strategy** | Container binding | Callable / protocol | Duck typing, blocks | Interface + `@Qualifier` | Interface + keyed services | Provider token | Interface | Trait object |
+| **Template Method** | Abstract base class | Abstract base class | Module + hooks | Abstract class | Abstract class | Abstract class | Interface + embedding | Trait default methods |
+| **Iterator** | Generators, `lazy()` | Generators, iterators | Enumerable | `Stream` | `IEnumerable`, `IAsyncEnumerable` | Async iterators | `range`, iterators | `Iterator` trait |
+| **Null Object** | `optional()`, `?->` | `None` + guards | `NullObject`, `&.` | `Optional` | Nullable refs, `?.` | `??`, optional chaining | Zero values | `Option<T>` |
+| **Result/Either** | Custom class | `Result` libs, exceptions | `Dry::Monads` | `Either` (Vavr) | `OneOf`, `FluentResults` | `neverthrow`, discriminated unions | `(T, error)` | `Result<T, E>` |
+
+Go and Rust deserve a note: both deliberately omit much of the classic catalogue. Go's zero
+values, interfaces and explicit errors remove the need for Null Object, Abstract Factory and
+much of the creational family. Rust's ownership model, `Option`/`Result` and traits do the
+same, and make Singleton actively hard on purpose. In both, reaching for a GoF pattern is
+usually a sign of writing another language's code in their syntax.
