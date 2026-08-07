@@ -34,8 +34,11 @@ if [ -d "$TARGET_DIR" ]; then
   esac
 fi
 
-mkdir -p "$TARGET_ROOT"
-cp -r "$SOURCE_DIR" "$TARGET_DIR"
+# Copy the *contents* into an explicitly created target directory. `cp -r src dst`
+# would create dst as a copy of src when dst does not exist, which puts SKILL.md
+# and references/ loose in skills/ instead of inside skills/<SKILL_NAME>/.
+mkdir -p "$TARGET_DIR"
+cp -R "$SOURCE_DIR/." "$TARGET_DIR/"
 
 REF_COUNT=$(find "${TARGET_DIR}/references" -name '*.md' -type f | wc -l | tr -d ' ')
 

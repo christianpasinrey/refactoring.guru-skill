@@ -47,8 +47,11 @@ if (Test-Path $TargetDir) {
     Remove-Item $TargetDir -Recurse -Force
 }
 
-New-Item -ItemType Directory -Path $TargetRoot -Force | Out-Null
-Copy-Item $SourceDir $TargetDir -Recurse -Force
+# Copy the *contents* into an explicitly created target directory. Copy-Item nests
+# the source folder inside the destination when the destination already exists, so
+# copying item-by-item keeps the layout deterministic.
+New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
+Copy-Item (Join-Path $SourceDir '*') $TargetDir -Recurse -Force
 
 $refCount = (Get-ChildItem (Join-Path $TargetDir 'references') -Filter '*.md' -File).Count
 

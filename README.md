@@ -231,11 +231,29 @@ cd refactoring.guru-skill
 
 ```bash
 # Global: available in every project
+mkdir -p ~/.claude/skills
 cp -r skills/patterns-and-refactoring ~/.claude/skills/
 
 # Or per-project
+mkdir -p .claude/skills
 cp -r skills/patterns-and-refactoring .claude/skills/
 ```
+
+```powershell
+# Windows PowerShell — global
+New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
+Copy-Item skills\patterns-and-refactoring "$HOME\.claude\skills\patterns-and-refactoring" -Recurse -Force
+```
+
+> [!IMPORTANT]
+> The `mkdir -p` is not optional. If `~/.claude/skills` does not exist yet, `cp -r` creates it *as a copy of the skill folder* — `SKILL.md` and `references/` land loose in `skills/` and Claude Code will not detect the skill. The correct result is:
+>
+> ```
+> ~/.claude/skills/patterns-and-refactoring/SKILL.md
+> ~/.claude/skills/patterns-and-refactoring/references/
+> ```
+>
+> If you already hit this, remove the stray `SKILL.md` and `references/` from `~/.claude/skills/` before reinstalling.
 
 Verify with `/skills` inside Claude Code — `patterns-and-refactoring` should be listed.
 
