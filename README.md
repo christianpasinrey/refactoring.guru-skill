@@ -4,13 +4,14 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-8A63D2)](https://docs.claude.com/en/docs/claude-code)
+[![Plugin](https://img.shields.io/badge/plugin-refactoring--guru%40christianpasinrey-8A63D2)](#recommended--plugin-from-the-marketplace)
 [![Standalone](https://img.shields.io/badge/dependencies-none-brightgreen)](#installation)
 [![Catalogues](https://img.shields.io/badge/catalogues-8-blue)](#whats-inside)
 [![References](https://img.shields.io/badge/reference%20files-23-blue)](#repository-layout)
 [![Stacks](https://img.shields.io/badge/framework%20idioms-10%20stacks-blue)](#whats-inside)
 
 > [!NOTE]
-> This skill is **standalone**. It needs no plugin, no MCP server, no other skill, and no runtime. It is Markdown that changes how the model reasons about design.
+> This skill is **standalone**. It needs no MCP server, no other skill, and no runtime. It is Markdown that changes how the model reasons about design. It ships two ways: as a **plugin** from this repo's marketplace (recommended — versioned, updatable) or as a **plain skill directory** copied into `~/.claude/skills`.
 
 ---
 
@@ -206,10 +207,52 @@ A typical STANDARD-level decision loads `SKILL.md` plus at most one reference. A
 
 ## Installation
 
-The skill is a directory of Markdown. Install it globally (available in every project) or per-project.
+Two routes. **The plugin is the recommended one** — it is versioned, updates with a single command, and needs no clone. The manual routes stay supported for anyone who prefers a raw skill directory.
 
 > [!NOTE]
-> **Cross-platform.** The skill executes nothing — it is plain Markdown read by the model, so it behaves identically on Linux, macOS and Windows. The two installers are a convenience; copying the directory by hand works everywhere.
+> **Cross-platform.** The skill executes nothing — it is plain Markdown read by the model, so it behaves identically on Linux, macOS and Windows. The installers and the plugin are both conveniences; copying the directory by hand works everywhere.
+
+### Recommended — plugin from the marketplace
+
+Inside Claude Code:
+
+```
+/plugin marketplace add christianpasinrey/refactoring.guru-skill
+/plugin install refactoring-guru@christianpasinrey
+```
+
+Or from a terminal:
+
+```bash
+claude plugin marketplace add christianpasinrey/refactoring.guru-skill
+claude plugin install refactoring-guru@christianpasinrey
+```
+
+The plugin installs the skill at **user scope** (every project). Use `--scope project` to commit it to a repo's `.claude/settings.json` so the whole team gets it, or `--scope local` for a machine-local, uncommitted install.
+
+Verify with `/plugin` or:
+
+```bash
+claude plugin details refactoring-guru
+```
+
+The skill shows up as `patterns-and-refactoring` and can be invoked explicitly as `/refactoring-guru:patterns-and-refactoring`.
+
+**Updating:**
+
+```bash
+claude plugin marketplace update christianpasinrey
+claude plugin update refactoring-guru
+```
+
+Updates land only when the `version` field is bumped in the release — a pinned version means no surprise changes mid-session.
+
+**Uninstalling:**
+
+```bash
+claude plugin uninstall refactoring-guru
+claude plugin marketplace remove christianpasinrey
+```
 
 ### Global — Linux / macOS / Git Bash
 
@@ -333,8 +376,11 @@ refactoring.guru-skill/
 ├── README.md
 ├── LICENSE
 ├── CLAUDE.md.snippet.md          # optional mandatory-invocation gate
-├── install.sh                    # POSIX installer
-├── install.ps1                   # Windows installer
+├── install.sh                    # POSIX installer (plain-skill route)
+├── install.ps1                   # Windows installer (plain-skill route)
+├── .claude-plugin/
+│   ├── plugin.json               # plugin manifest — repo root *is* the plugin
+│   └── marketplace.json          # marketplace catalogue — repo root *is* the marketplace
 └── skills/
     └── patterns-and-refactoring/
         ├── SKILL.md              # routing layer — the only always-loaded file
@@ -414,6 +460,19 @@ That negative space is the entire value of this skill.
 
 The skill slots between "requirements are settled" and "code gets written". Anything that couples it to a specific plugin, workflow, or toolchain narrows where it can be used for no gain. It is Markdown; it composes with whatever process you already run.
 
+The plugin packaging does not change this: the plugin is a distribution wrapper around the same `skills/patterns-and-refactoring/` directory. Copying that directory by hand still works and always will.
+
+</details>
+
+<details>
+<summary><b>Why the repo root is both the plugin and the marketplace</b></summary>
+
+Claude Code discovers a plugin's `skills/` directory automatically, so the existing layout already *is* a valid plugin — it only needed `.claude-plugin/plugin.json`. Adding `.claude-plugin/marketplace.json` alongside it, with the plugin entry pointing at `"./"`, makes the same repository the catalogue.
+
+The result: one repo, one clone, one source of truth. `install.sh`, the manual copy, and `/plugin install` all serve the same files.
+
+**Rejected:** a separate marketplace repository, or a `plugins/refactoring-guru/` subdirectory with a duplicated copy of the skill. Both add a sync obligation between two copies of the same Markdown, which is exactly the kind of drift the skill tells you to design away.
+
 </details>
 
 ---
@@ -434,6 +493,14 @@ Useful contributions:
 - [ ] Corrections — particularly where a "do NOT use when" is wrong or too absolute, or where a framework idiom is out of date
 
 Open an issue before a large addition so the scope can be agreed first.
+
+### Releasing
+
+Plugin users only receive changes when the version is bumped. For a release:
+
+1. Bump `version` in **both** `.claude-plugin/plugin.json` and the plugin entry in `.claude-plugin/marketplace.json` — they must agree.
+2. Validate: `claude plugin validate . --strict`
+3. Tag and push: `claude plugin tag .` creates `refactoring-guru--v<version>` after re-checking that both manifests match.
 
 ---
 

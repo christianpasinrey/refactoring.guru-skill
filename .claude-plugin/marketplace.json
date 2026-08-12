@@ -1,0 +1,34 @@
+{
+  "name": "christianpasinrey",
+  "description": "Plugins by Christian Pasín Rey for Claude Code.",
+  "owner": {
+    "name": "Christian Pasín Rey",
+    "url": "https://github.com/christianpasinrey"
+  },
+  "plugins": [
+    {
+      "name": "refactoring-guru",
+      "source": "./",
+      "displayName": "Refactoring Guru — Patterns & Refactoring",
+      "description": "Forces a deliberate design decision before non-trivial code is written, and a disciplined, test-backed process before code is restructured. Ships the patterns-and-refactoring skill: 22 GoF patterns, 66 refactoring techniques, 22 code smells, enterprise/architectural/DDD/distributed/concurrency/functional/frontend catalogues, anti-patterns and framework idioms for 10 stacks.",
+      "version": "1.0.0",
+      "category": "development",
+      "tags": [
+        "design-patterns",
+        "refactoring",
+        "code-smells",
+        "architecture",
+        "ddd",
+        "legacy-modernization",
+        "code-quality"
+      ],
+      "author": {
+        "name": "Christian Pasín Rey",
+        "url": "https://github.com/christianpasinrey"
+      },
+      "homepage": "https://github.com/christianpasinrey/refactoring.guru-skill#readme",
+      "repository": "https://github.com/christianpasinrey/refactoring.guru-skill",
+      "license": "MIT"
+    }
+  ]
+}

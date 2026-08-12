@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "refactoring-guru",
+  "displayName": "Refactoring Guru — Patterns & Refactoring",
+  "version": "1.0.0",
+  "description": "Forces a deliberate design decision before non-trivial code is written, and a disciplined, test-backed process before code is restructured. Ships the patterns-and-refactoring skill: 22 GoF patterns, 66 refactoring techniques, 22 code smells, enterprise/architectural/DDD/distributed/concurrency/functional/frontend catalogues, anti-patterns and framework idioms for 10 stacks.",
+  "author": {
+    "name": "Christian Pasín Rey",
+    "url": "https://github.com/christianpasinrey"
+  },
+  "homepage": "https://github.com/christianpasinrey/refactoring.guru-skill#readme",
+  "repository": "https://github.com/christianpasinrey/refactoring.guru-skill",
+  "license": "MIT",
+  "keywords": [
+    "design-patterns",
+    "refactoring",
+    "code-smells",
+    "architecture",
+    "ddd",
+    "legacy-modernization",
+    "code-quality"
+  ]
+}
