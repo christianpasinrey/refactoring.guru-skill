@@ -11,7 +11,7 @@
 | **Abstract Factory + DI** | The service container | `$this->app->bind(Port::class, Adapter::class)`. Do not write a factory class to pick an implementation |
 | **Factory Method** | `bind()` with a closure; contextual binding | Contextual binding gives different implementations per consumer |
 | **Singleton** | `$this->app->singleton()` | One instance, injected, testable. Never a static `getInstance()` |
-| **Strategy** | Container binding by key; the Manager pattern (`Cache`, `Queue`, `Mail`) | Extend an existing manager with `extend()` before writing a new resolver |
+| **Strategy** | **Notification channels:** `Notification::via()` + channel drivers. **Driver-keyed:** the Manager pattern (`Cache`, `Queue`, `Mail`, `Storage`). **Your own:** container binding by key | A notification channel *is* a Strategy — add it to `via()`, never a channel factory. Extend an existing manager with `extend()` before writing a new resolver |
 | **Chain of Responsibility** | Middleware; `Illuminate\Pipeline\Pipeline` | `Pipeline::send($x)->through([...])->thenReturn()` |
 | **Observer** | Events + listeners; model observers; `Model::booted()` | Model events for lifecycle; domain events for cross-module fan-out |
 | **Command** | Queued jobs; console commands; `Bus::dispatch()` | A job *is* a Command object: serialisable, retryable, delayable |
@@ -27,7 +27,7 @@
 | **Facade** *(GoF)* | Service classes with a narrow API | **Laravel Facades are not the GoF Facade** — they are a static Service Locator over the container |
 | **Template Method** | `FormRequest`, `TestCase`, `Notification`, `Command` | Extend the provided base rather than inventing a parallel lifecycle |
 | **Builder** | Query Builder; `Notification`/`Mailable` fluent APIs | Fluent methods returning `$this`, then a terminal method |
-| **Iterator** | `IteratorAggregate`, generators, `cursor()`, `lazy()`, `chunk()` | `Model::lazy()` streams rows; never `->all()` on a large table |
+| **Iterator** | `IteratorAggregate`, generators, `cursor()`, `lazy()`, `lazyById()`, `chunk()` | `lazyById()` streams in constant memory but orders by the key — it cannot take `latest('placed_at')`. `cursor()` is one query but MySQL's PDO driver still buffers the whole result unless buffering is off. Never `->all()` on a large table |
 | **Value Object** | Custom casts (`CastsAttributes`); enums; `Stringable` | Casts turn a column into a value object transparently |
 | **Null Object / Special Case** | `optional()`, nullsafe `?->`, `Collection::whenEmpty()` | |
 | **Retry / Rate Limiting** | `Http::retry()`; `RateLimiter`; job `backoff()`, `retryUntil()` | Built in. Do not hand-roll retry loops |
@@ -66,14 +66,14 @@ persistence abstraction that fights the framework.
 
 | Feature | Replaces |
 |---|---|
-| **Enums** (backed, with methods and interfaces) | Replace Type Code with Class; State when transitions are simple; whole Strategy hierarchies |
+| **Enums** (backed, with methods and interfaces) | Replace Type Code with Class; State when transitions are simple; whole Strategy hierarchies. Casting an existing column to an enum changes its PHP type for *every* reader — land the enum first, migrate readers, then add the cast (Parallel Change) |
 | **First-class callable syntax** `$obj->method(...)` | Strategy and Command objects for single-method cases |
 | **Readonly properties / classes** | Immutable value objects without hand-written guards |
 | **Constructor property promotion** | Boilerplate in value objects and DTOs |
 | **Named arguments** | Long Parameter List; the Builder for simple objects |
 | **Attributes** | Metadata Mapping; declarative routing, validation, listeners |
 | **Generators** | Iterator; streaming large datasets without memory blowup |
-| **`match`** | Simple Strategy dispatch. **Two branches do not need a pattern** |
+| **`match`** | Simple Strategy dispatch. **Two branches do not need a pattern.** Note: `match` compares with `===`; converting an `if`/`elseif` chain that used `==` on untyped input is a behaviour change unless the values are pinned as typed |
 | **Interfaces + union types** | Sum types, approximately |
 | **`never` return type** | Documents non-returning guard helpers to static analysis |
 
@@ -102,6 +102,48 @@ project is the single most common source of over-engineered Laravel codebases.
 
 ---
 
+## Livewire · Inertia specifics
+
+Both are [server-driven UI](../frontend-patterns.md#server-driven-ui) and inherit its fit
+(forms over data, admin panels, dashboards) and its misfit (offline, sub-100 ms interaction,
+drawing tools). The pattern questions are the same; the answers differ.
+
+### Livewire
+
+A component is a **presenter + state + actions**. It is not where domain rules live.
+
+| Concern | Do this | Not that |
+|---|---|---|
+| **Domain rules** | Call an Action / Service from the component method | Pricing, eligibility, or workflow logic inside the component |
+| **Lifecycle** | Thin `mount()` and `render()`; hydrate, delegate, return the view | Queries and rules in `render()` re-run on every request |
+| **Validation + form state** | A Form object (Livewire 3) — validation rules, state and `save()` in one class | Twenty `public` properties plus a `rules()` array on the component |
+| **Derived values** | `#[Computed]` — cached per request, invalidated on change | Recomputing the same query in `render()` and in three methods |
+| **Input binding** | The deferred default; `wire:model.live` only when the UI must react per keystroke | `.live` everywhere — a round trip per keystroke is the cost of server-driven UI, spend it deliberately |
+| **Size** | One concern per component; extract nested components before it reaches a screen's worth of properties | A component with 30 public properties — Large Class, same cure |
+| **Parent ↔ child** | Direct calls: props down, `$parent` or return values up | `dispatch()` between a parent and its own child |
+| **Cross-component fan-out** | `dispatch()` — Observer, with Observer's cost: nobody can see what runs | Events used to hide a coupling that is real |
+
+### Inertia
+
+The controller shapes the page. **The props are the DTO at the boundary.**
+
+| Concern | Do this | Not that |
+|---|---|---|
+| **Props** | API Resources or explicit arrays with exactly what the page renders | Passing a whole model with its relations — every column becomes public contract |
+| **Data access** | Controllers only; no JSON API for the same screens | A parallel `/api/*` layer that the SPA never needed |
+| **Global state** | Shared data via middleware (`HandleInertiaRequests`): auth user, flash, feature flags | Per-page state promoted to shared data |
+| **Freshness** | Partial reloads and lazy props | A hand-rolled client cache in front of Inertia |
+| **Forms** | `useForm` — a Command with a network boundary; validate server-side as untrusted | Trusting client validation; skipping the FormRequest |
+
+**Choosing, by force:**
+
+- **Interaction latency or offline is the requirement** → API + SPA. Server-driven UI cannot get there.
+- **The team writes PHP and the app is forms over data** → Livewire. One language, no API to design.
+- **The team writes Vue/React and wants the SPA feel without an API** → Inertia. Controllers stay, JSON contracts do not appear.
+
+FluxUI and Blade components are the Template View / component layer — markup with slots, no
+domain logic.
+
 ## Going against the grain — signs you are fighting the framework
 
 - A `Repositories/` directory of classes that each wrap one Eloquent call.
@@ -110,6 +152,9 @@ project is the single most common source of over-engineered Laravel codebases.
 - Service classes that only forward to the model, with no logic of their own.
 - Doctrine-style entities with private properties and getters, mapped onto Eloquent by hand.
 - A `Domain/` layer that imports `Illuminate\*`.
+- Domain rules inside a Livewire component method — the component is the presenter, not the model.
+- A Livewire component with 30 public properties. Large Class; extract a Form object and nested components.
+- An Inertia page receiving a whole Eloquent model with its relations as props — the schema has become the public contract.
 
 Each of these costs real maintenance and buys nothing that the framework was not already
 providing.

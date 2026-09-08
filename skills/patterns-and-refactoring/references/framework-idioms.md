@@ -23,6 +23,9 @@ that way. Reimplementing it is not.
 | **Go** | [idioms/go.md](idioms/go.md) |
 | **Rust** | [idioms/rust.md](idioms/rust.md) |
 
+Plain PHP, Python, Ruby or TypeScript with no framework? Open the same-language file and use
+its "language features that replace patterns" section; skip the framework tables.
+
 Stack not listed? The rule below still applies — check the framework's own vocabulary for the
 pattern before building it. Frameworks converge on the same solutions; the names differ.
 

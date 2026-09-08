@@ -1,34 +1,27 @@
 ---
 name: patterns-and-refactoring
-description: Use before designing or writing any non-trivial code, and before any refactor. Two entry paths — for new code, name the axis of change and pick the pattern that absorbs it (or prove none is needed); for existing code, name the smell and pick the refactoring that cures it. Covers the 22 Gang of Four patterns, 66 refactoring techniques, 22 code smells, enterprise (PoEAA), architectural, DDD, distributed/cloud, messaging, concurrency, functional and frontend patterns, plus pattern anti-patterns and the idioms your framework already provides. Triggers on designing a class/service/module/package, choosing an approach, "how should I structure this", refactoring, cleaning up, "this code is messy", legacy migration, and reviewing a design.
+description: Use before designing or writing any non-trivial code, before any refactor, and when reviewing a design or pull request for structure. Triggers on designing a class, service, module or package; choosing an approach; "how should I structure this"; refactoring, cleaning up, "this code is messy"; legacy migration; adding a feature to tangled code; and reviewing someone else's abstractions. Covers GoF, refactoring techniques, code smells, PoEAA, architectural, DDD, distributed, messaging, concurrency, functional and frontend patterns, anti-patterns, testing shapes, and per-stack framework idioms.
 ---
 
 # Patterns & Refactoring
 
-Two doors into this skill. Pick the one that matches the trigger.
+Three doors into this skill. Pick the one that matches the trigger. Every door ends at the
+same place: **Step 6 — verify what you actually built.**
 
 ```mermaid
 flowchart TD
-    T{What triggered this?} -->|New code to design| A[Path A: Force → Pattern]
-    T -->|Existing code that hurts| B[Path B: Smell → Refactoring]
-    A --> A1[Step 1: Name the force]
-    A1 --> A2[Step 2: Route to a family]
-    A2 --> A3[Step 3: Framework already solve it?]
-    A3 --> A4[Step 4: YAGNI gate]
-    A4 --> A5[Step 5: State the decision]
-    B --> B1[Step 1: Name the smell]
-    B1 --> B2[Step 2: Cover with tests]
-    B2 --> B3[Step 3: Smallest refactoring first]
-    B3 --> B4{Does a pattern<br/>emerge naturally?}
-    B4 -->|Yes| A4
-    B4 -->|No| B5[Stop. Refactoring was enough.]
-    A5 --> Z[Implement]
-    B5 --> Z
+    T{Trigger} -->|New code| A[Path A: force → YAGNI gate → decision]
+    T -->|Existing code that hurts| B[Path B: smell → tests → smallest refactoring]
+    T -->|Someone else's design or PR| C[Path C: behaviour first → gate in reverse → review]
+    B -->|a pattern emerges| A
+    A --> Z[Implement] --> V[Step 6: verify against the decision]
+    B --> Z
+    C --> V
 ```
 
 ---
 
-## Step 0 — Triage (both paths)
+## Step 0 — Triage (every path)
 
 Over-applying this skill is itself an anti-pattern. Be honest about the level.
 
@@ -40,6 +33,24 @@ Over-applying this skill is itself an anti-pattern. Be honest about the level.
 
 Between two levels? Pick the lower. A missing paragraph is cheap; ceremony on every task gets
 the whole process abandoned.
+
+**Reviewers re-triage independently.** A PR labelled "just structure" frequently contains
+behaviour. Triage what the diff *does*, not what its description says.
+
+## Step 0.5 — Read the room (every path)
+
+Two lookups before any decision, both cheap:
+
+1. **Detect the stack** from the manifest — `composer.json`, `package.json`, `go.mod`,
+   `Cargo.toml`, `pyproject.toml`, `Gemfile`, `*.csproj`, `pom.xml` / `build.gradle` — and
+   open the matching file in [`references/idioms/`](references/idioms/). Do not guess the
+   stack from file extensions.
+2. **Find how this codebase already solves this kind of problem.** Grep for an existing
+   `Actions/`, `Services/`, `Pipelines/`, event, job, or resolver that does something of the
+   same shape. Follow it. Consistency with the codebase beats textbook purity: a second way of
+   doing the same thing is a smell you are introducing. If the existing convention is itself a
+   smell, say so in the decision rather than silently diverging from it. If there is no
+   convention yet, say that too, and default to the framework idiom.
 
 ---
 
@@ -69,7 +80,7 @@ Write it as a sentence: *"The payment provider varies per tenant, chosen at runt
 checkout flow must not change."* That sentence usually names the pattern by itself.
 
 **If nothing varies** — stop. The right design for a problem with one implementation is direct,
-readable, deletable code.
+readable, deletable code. Go to Step 5 and write the NO-PATTERN decision.
 
 ## Step 2 — Route to a family
 
@@ -131,23 +142,24 @@ readable, deletable code.
 State vs Strategy, Adapter vs Facade, Decorator vs Proxy, Strategy vs Template Method and
 Bridge vs Strategy are the confusions that matter. `gof-catalog.md` disambiguates each pair.
 
-## Step 3 — Check the framework first
+**A catalogue "Use when" is not a "use now".** Strategy lists export formats as a classic fit;
+that does not make an exporter interface right for a ticket with one format. The gate in Step 4
+still applies to every textbook example.
+
+## Step 3 — Check the framework and the codebase first
 
 Most patterns already exist in your framework. Rebuilding one by hand is not "applying a
 pattern", it is duplicating infrastructure you then have to maintain.
 
 Read [framework-idioms.md](references/framework-idioms.md) before writing pattern scaffolding.
-It routes to a per-stack file — Laravel/PHP, Django/Python, Rails/Ruby, Spring/Java,
-ASP.NET/C#, Node/TypeScript, Vue, React, Go, Rust — and carries a cross-stack table of where
-each ecosystem hides the same pattern.
+It routes to the per-stack file from Step 0.5 and carries a cross-stack table of where each
+ecosystem hides the same pattern: Spring's `*Template` classes *are* Template Method, .NET's
+`DbSet<T>` *is* a Repository, Laravel's `Pipeline` and Go's `http.Handler` wrapping *are*
+Chain of Responsibility, Laravel's `Notification::via()` *is* the channel Strategy.
 
-Examples of what is already there: Spring's `*Template` classes *are* Template Method; .NET's
-`DbSet<T>` *is* a Repository and `DbContext` *is* a Unit of Work; Laravel's `Pipeline` and Go's
-`http.Handler` wrapping *are* Chain of Responsibility; Django signals and Vue reactivity *are*
-Observer; Rust's `Option<T>` *is* Null Object enforced by the compiler.
-
-Naming the pattern the framework implements is valuable — it tells the reader why the code is
-shaped that way. Reimplementing it is not.
+Then check the codebase's own idiom (Step 0.5). If it already resolves strategies, dispatches
+events, or runs pipelines one way, use that way. Naming the pattern the framework or the
+codebase implements is valuable; reimplementing it is not.
 
 ## Step 4 — The YAGNI gate
 
@@ -163,7 +175,30 @@ factories, pattern-name theatre — in [antipatterns.md](references/antipatterns
 
 **Refactoring into a pattern later is normal and cheap. Guessing wrong up front is neither.**
 
+### When someone asks you to "make it extensible"
+
+A tech lead, a PM, or a ticket asking for extensibility does not change the gate. It changes
+what you say. Answer with the *seam*, not the abstraction:
+
+1. **Separate what is stable from what would vary** — the query from the writer, the rule from the channel, the calculation from the format — as two plain functions or classes with no interface between them. The seam lives where the codebase already puts that kind of logic; with no convention, in the smallest scope that keeps it callable, usually a private method of the caller.
+2. **Name the trigger for the abstraction:** "When the second format has a ticket, this becomes a Strategy; the seam is already where the interface would go."
+3. **Explain why waiting is safer:** an interface designed from one case is the interface the second case cannot satisfy. Designing it from two real cases costs less than designing it twice.
+
+That is extensibility delivered without paying for it today. A request for extensibility that
+still fails the gate after this answer is the requester's call: ship the direct version, record
+the offer in the decision as *rejected — the requester may override*, and add the abstraction
+only when they do.
+
 ## Step 5 — State the decision
+
+Templates for every level, with worked examples, are in
+[decision-templates.md](references/decision-templates.md). The two you will use most:
+
+**NO-PATTERN** — the most common and most valuable outcome. State it; do not skip it:
+
+> **Force:** none today — one provider, one signature scheme. "Maybe Paddle next year" has no ticket.
+> **Choice:** direct code. Header parsing and the HMAC check separated as two plain methods (the seam).
+> **Becomes a pattern when:** a second provider has a ticket → Strategy over the verifier.
 
 **STANDARD**, in the chat before writing code:
 
@@ -172,9 +207,10 @@ factories, pattern-name theatre — in [antipatterns.md](references/antipatterns
 > **Pattern:** Strategy, resolved through the container by channel key.
 > **Rejected:** a `match` in the sender — three channels exist today and a fourth is on the
 > roadmap, so the branch would keep growing at one call site.
+> **Framework:** Laravel's notification channels already do this — extending `via()`, not a resolver.
 
-**ARCHITECTURAL**: a `Pattern Decisions` section in the spec or plan, one entry per decision,
-each with force, pattern, rejected alternatives, and a Mermaid diagram of the structure.
+**ARCHITECTURAL**: a `Pattern Decisions` section in the spec or plan, one entry per decision in
+the ADR shape from `decision-templates.md`, with a Mermaid diagram of the structure.
 
 Never write "used the Strategy pattern" and stop. The force and the rejected alternative are
 what remain useful in six months; the name alone is decoration.
@@ -196,15 +232,39 @@ Surgery, Primitive Obsession, Divergent Change… The name carries the diagnosis
 All 22 smells, with symptoms, causes, and their treatments:
 [code-smells.md](references/code-smells.md).
 
+**Feature on messy code?** That is *preparatory refactoring*: make the change easy (Path B, own
+commits), then make the easy change (Path A, own commit). Never both in one diff. Details in
+[refactoring-workflow.md](references/refactoring-workflow.md#preparatory-refactoring).
+
 ## Step 2 — Cover it with tests first
 
 Non-negotiable. Refactoring without a safety net is editing and hoping.
 
-- Tests exist → run them, confirm green, and confirm they actually cover the target.
+- Tests exist → **run them now**, show the result, and confirm they cover the target. "The suite is probably green" is not a result.
 - Tests do not exist → write **characterization tests** first: capture what the code does *now*, bugs included. Do not fix behaviour in the same step.
+- No test runner available (no `vendor/`, no `node_modules`) → a plain script that executes the pinned cases and exits non-zero on drift is a valid safety net. Keep the cases in a file the real runner can consume later.
 - The code is untestable → that is the first refactoring. Break the dependency (extract an interface, introduce a seam), then test, then continue.
+- A bug is discovered or reported alongside the refactor → **pin the buggy behaviour**, finish the refactoring, then fix the bug in its own commit and move the pinned expectation *in that commit*. If the correct behaviour is ambiguous, ask; when nobody can answer, fix only the unambiguous part, keep the rest pinned, make the fix the last and droppable checkpoint, and state the assumption in it.
 
-Details in [refactoring-workflow.md](references/refactoring-workflow.md).
+Details in [refactoring-workflow.md](references/refactoring-workflow.md). Test shapes per
+situation in [testing-patterns.md](references/testing-patterns.md).
+
+### Under deadline pressure
+
+The two rules — *tests are non-negotiable* and *under acute deadline, note the debt and ship* —
+resolve like this:
+
+- If pinning the behaviour costs less than the refactoring itself (a pure function over data, a class with clear inputs and outputs): pin it and refactor. That is minutes, not hours.
+- If pinning would cost more than the deadline allows: **do not refactor now.** Ship the feature with Sprout Method or Wrap Method, note the debt, schedule the refactor.
+- There is no third option in which the code gets restructured without a net because someone said there was no time.
+
+| Rationalization | Reality |
+|---|---|
+| "No time for tests" | Then there is no time to refactor. Sprout the new code and leave the old shape alone. |
+| "It's a pure function, I can see it's equivalent" | Pure functions are the *cheapest* to pin. Fifteen cases, one generator, five minutes. |
+| "I'll add tests after the refactor" | Tests written after pin the new behaviour, including whatever the refactor broke. |
+| "The fix is tiny, I'll fold it into the extract" | A reviewer cannot separate the two, and a revert throws away the wrong half. |
+| "The runner isn't installed, so tests aren't possible" | A plain script with the pinned cases is a runner. |
 
 ## Step 3 — Smallest refactoring first
 
@@ -220,8 +280,20 @@ Pick from the 66 catalogued techniques in
 | Simplifying Method Calls | Unclear, unsafe, or overloaded interfaces |
 | Dealing with Generalization | Inheritance hierarchies that fit badly |
 
-Work in **small, individually reversible steps**, running tests after each. Commit at every
-green point. A refactor that cannot be abandoned halfway was too big.
+Work in **small, individually reversible steps**, running tests after each. A refactor that
+cannot be abandoned halfway was too big. When a step goes red, revert it; do not debug it.
+
+**Checkpoint granularity:** one checkpoint per named technique applied to one target —
+"constants introduced", "pricing extracted", "guard clauses in `process()`". Not one per line,
+not one for the whole refactor. Commit at each checkpoint when the user's workflow allows
+commits; otherwise stop there, report the green run, and let the user commit.
+
+Output before starting, at STANDARD level:
+
+> **Smell:** Long Method (`process()`, 90 lines, five commented sections) + Magic Numbers.
+> **Safety net:** no tests → characterization tests over 15 representative inputs, run green.
+> **Sequence:** Replace Magic Number with Symbolic Constant → Extract Method per section → Guard Clauses.
+> **Pattern deferred:** tiers want Replace Type Code with Strategy; one new tier next week is an `if`, not a hierarchy — YAGNI gate after the extractions land.
 
 ## Step 4 — Let the pattern emerge, don't force it
 
@@ -234,12 +306,79 @@ the YAGNI gate. A pattern reached by refactoring still has to justify its cost.
 
 ---
 
+# Path C — Reviewing someone else's design
+
+For a pull request, a proposed design, or a plan that adds structure. The skill's own gate,
+run in reverse, per abstraction.
+
+## Step 1 — Behaviour first
+
+Read the diff for what it *does* before what it *is*. Swallowed exceptions, null paths, missing
+bindings, loose comparisons on magic values — these outrank every design point and go first in
+the review. This skill covers the design half; it does not excuse skipping the behaviour half.
+
+## Step 2 — Run the gate backwards on each added abstraction
+
+For every interface, base class, factory, wrapper, DTO, event, or layer the change introduces:
+
+1. Can the author name the force? Is the source of variation real and named, or "so we can swap it later"?
+2. Do two variants exist today? Count implementations. One is a guess.
+3. Does the framework or the codebase already provide it? ([framework-idioms.md](references/framework-idioms.md), Step 0.5)
+4. Is the direct version genuinely worse? Sketch it. If it is smaller and as clear, say so with the sketch.
+5. Does it make the code easier to test, or harder?
+
+For every changed piece of existing code: name the smell it cures or introduces, by name, from
+[code-smells.md](references/code-smells.md). Check
+[antipatterns.md](references/antipatterns.md) for the named shape before writing your own
+description of it. The stack is known, so go straight to its file in
+[`references/idioms/`](references/idioms/) for the framework check.
+
+## Step 3 — Write the review
+
+Shape, in this order — full template in
+[decision-templates.md](references/decision-templates.md#review):
+
+1. **Verdict** in one line: approve, approve with nits, or request changes — plus the re-triage when the diff does more than its description says.
+2. **Blocking behaviour** — each with file and line, what fails, and the fix. Missing or insufficient tests are a blocking item, not a nit.
+3. **Design** — one section per abstraction the author justified, quoting their justification and answering it with the gate. Name the anti-pattern or smell.
+4. **The direct alternative** — a sketch, sized in files and lines, with any public-contract change it implies and the variant that avoids it. Removing an abstraction is a request that must come with the smaller shape, or it is just criticism.
+5. **Nits** — clearly labelled, never mixed with blocking items.
+
+Then run Step 6 on the alternative you proposed, not on the author's code. A verdict has no
+time budget: when the author is under deadline pressure, offer the smaller direct version —
+usually faster to land than the abstraction — rather than a conditional approve. Removing an
+abstraction after callers adapt to it costs more than never adding it. Length follows the
+number of distinct findings, not the diff's line count.
+
+---
+
+## Step 6 — Verify what you built (every path)
+
+The decision was made before the code. Now check the code against it — this is where
+abstractions creep in unannounced. Full checklist in
+[verification.md](references/verification.md); the short form:
+
+- [ ] **Every new interface or abstract class has two implementations in this change**, or is named in the decision as a deliberate seam with its trigger.
+- [ ] **No generic component with one consumer** — a "reusable" writer, mapper or helper used from one place is inlined until the second consumer exists.
+- [ ] **Every new class is named for a domain concept**, not a mechanism (`PricingRule`, not `PricingStrategyFactoryImpl`).
+- [ ] **The rejected alternative did not sneak back in** — no `match` beside the Strategy, no wrapper beside the framework feature the decision chose.
+- [ ] **Tests exercise the axis of change** — one test per variant, wrapping order, listener plus wiring, or the pinned cases still green — and **they ran**. No runner installed → say so and show the lint or type check; never report tests as passing without a run.
+- [ ] **File count matches the level** — a STANDARD decision that produced eight files is over-engineering or an undeclared ARCHITECTURAL one.
+- [ ] **The direct version, re-sketched now, is still worse.** If not, simplify before reporting done.
+
+Report the audit in the three-line shape from `decision-templates.md`, including "nothing to
+change". An audit that only ever says "all good" is not being run.
+
+---
+
 ## Reference index
 
 Load only what you need. `SKILL.md` routes; the references carry the depth.
 
 | File | Use when |
 |---|---|
+| [decision-templates.md](references/decision-templates.md) | You are writing the decision, the ADR, or the review, and want the shape and a worked example |
+| [verification.md](references/verification.md) | The code is written and you are auditing it against the decision |
 | [gof-catalog.md](references/gof-catalog.md) | You have a family and need the pattern, its cost, and when *not* to use it |
 | [architectural.md](references/architectural.md) | The decision is about layering, boundaries, or deployment topology |
 | [enterprise-patterns.md](references/enterprise-patterns.md) | Persistence, ORM mapping, domain logic organisation, session and locking |
@@ -250,7 +389,8 @@ Load only what you need. `SKILL.md` routes; the references carry the depth.
 | [frontend-patterns.md](references/frontend-patterns.md) | Components, client state, rendering, data fetching |
 | [code-smells.md](references/code-smells.md) | Existing code hurts and you need to name why |
 | [refactoring-techniques.md](references/refactoring-techniques.md) | You know the smell and need the mechanical cure |
-| [refactoring-workflow.md](references/refactoring-workflow.md) | Refactoring safely: seams, characterization tests, large legacy work |
+| [refactoring-workflow.md](references/refactoring-workflow.md) | Refactoring safely: seams, characterization tests, expand/contract, Branch by Abstraction, legacy work |
+| [testing-patterns.md](references/testing-patterns.md) | Which tests a pattern or a refactor needs; doubles, contract tests, approval tests, test smells |
 | [antipatterns.md](references/antipatterns.md) | You are about to add indirection and want the gate applied honestly |
 | [framework-idioms.md](references/framework-idioms.md) | **Before hand-rolling any pattern.** Routes to one of 10 per-stack files in [`references/idioms/`](references/idioms/) |
 
@@ -258,16 +398,15 @@ Load only what you need. `SKILL.md` routes; the references carry the depth.
 
 ## Where this fits in the work
 
-This skill is self-contained and has no dependencies on any other skill, plugin, or tool.
+Self-contained; no dependency on any other skill, plugin or tool. It occupies one slot:
+**after you know what to build, before you write how it is built, and again after it is
+built.**
 
-It occupies one specific slot: **after you know what to build, before you write how it is
-built.** Three boundaries keep it in that slot:
+- **Requirements come first.** This skill never decides *what* to build. Arrive with the requirement settled.
+- **Debugging comes first.** Find the root cause before touching structure. Never paper over a bug with a pattern.
+- **Tests come alongside.** Path A: a pattern that makes code *harder* to test is probably wrong. Path B: tests are a precondition, not a follow-up.
 
-- **Requirements come first.** This skill never decides *what* to build or whether a feature is worth building. Arrive with the requirement already settled.
-- **Debugging comes first.** When something is broken, find the root cause before touching structure. Never reach for a pattern to paper over a bug, and never fix behaviour and refactor in the same commit.
-- **Tests come alongside.** Path A: if a pattern makes something *harder* to test, that is strong evidence the pattern is wrong. Path B: tests are a precondition, not a follow-up.
-
-If your workflow already includes planning or TDD steps of its own, this slots between them
+If your workflow already has planning, TDD or code-review steps, this slots between them
 without needing to know they exist.
 
 ---

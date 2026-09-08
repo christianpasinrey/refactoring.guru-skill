@@ -186,7 +186,7 @@ that actually prevent bad decisions, so read those before committing.
 - **Intent** — Define a family of interchangeable algorithms and make them swappable at runtime.
 - **Force** — One thing varies: *how* a step is performed, selected at runtime.
 - **Use when** — Payment providers, shipping cost rules, export formats, sorting or pricing policies, notification channels. The highest value-to-cost ratio of any behavioral pattern.
-- **Do NOT use when** — There are two branches and no third in sight. A `match` expression is honest and readable.
+- **Do NOT use when** — There are two branches and no third in sight. A `match` expression is honest and readable. A catalogue "Use when" is not a "use now": one export format in the ticket plus a wish for a second still fails the Rule of Three — leave the seam, not the interface (see `SKILL.md` Step 4).
 - **Cost** — Low. The main trap is a strategy interface built around one implementation's needs, which the second implementation then can't satisfy. Design the interface from at least two real cases.
 
 ### Template Method

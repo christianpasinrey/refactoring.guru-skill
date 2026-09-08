@@ -33,9 +33,14 @@ flowchart LR
 costs seconds; debugging a half-finished structural change costs an afternoon and often ends
 in a worse state than it started.
 
-**Commit at every green point.** A branch with 40 tiny green commits can be reviewed, bisected
-and partially reverted. One 4,000-line "refactor" commit can only be trusted or rejected
-wholesale, and reviewers always trust it, which is how refactors ship bugs.
+**Checkpoint at every green point.** One checkpoint per named technique applied to one target:
+"constants introduced", "pricing extracted", "guard clauses in `process()`". Not one per line,
+not one for the whole refactor. Commit at each checkpoint when the workflow allows commits;
+otherwise stop there, report the green run, and let the owner commit.
+
+A branch with 40 tiny green commits can be reviewed, bisected and partially reverted. One
+4,000-line "refactor" commit can only be trusted or rejected wholesale, and reviewers always
+trust it, which is how refactors ship bugs.
 
 ---
 
@@ -57,8 +62,21 @@ correctness, you are pinning behaviour so you will notice if it moves.
 5. Repeat until the important paths are pinned.
 ```
 
+**Generate, don't hand-write.** For a function over data, write a one-off script (kept out of
+the repository; only the cases file and the test are committed) that runs the
+*current* code over 10–20 representative inputs (each branch, each boundary, the empty case) and
+freezes the actual outputs into a cases file. Assert with **strict equality, types included** —
+an `int` `0` becoming a `float` `0.0` is exactly the drift a refactor introduces and loose
+equality hides. If no test runner is installed, a plain script that walks the cases file and
+exits non-zero on drift is a valid net; keep the cases in a format the real runner can consume
+later.
+
 If you discover a bug this way, **do not fix it here**. Pin the buggy behaviour, note it, and
-fix it in a separate change afterwards. Something downstream may depend on the bug.
+fix it in a separate change afterwards. Something downstream may depend on the bug. The pinned
+expectation moves **only in the fix commit**, so the diff shows exactly which behaviour changed
+and why — and it moves **one named case at a time**. Never re-run the generator over the whole
+file to re-pin: that silently accepts every other drift along with the one you meant. If the correct behaviour is ambiguous — "this looks wrong" is not a spec — ask; never
+guess a specification inside a refactor.
 
 ### 2. Find a seam
 
@@ -101,6 +119,92 @@ HTML page — do not hand-write assertions.
 This gives broad safety cheaply, and is often the only practical net around a 900-line report
 generator. It is coarse — it will not tell you *why* something changed — so pair it with
 targeted unit tests on the parts you are actively refactoring.
+
+---
+
+## Preparatory refactoring
+
+Kent Beck: *"Make the change easy (warning: this may be hard), then make the easy change."*
+
+A feature that lands on messy code is two pieces of work, not one:
+
+1. **Path B first, in its own commits.** Refactor until the feature is a small, obvious addition. Tests green at every checkpoint, behaviour unchanged.
+2. **Path A second, in its own commit.** Add the feature. The diff is now small enough to review on its own terms.
+
+**Never both in one diff.** A reviewer cannot tell the structural moves from the behavioural
+ones, a bisect lands on a commit that did both, and a revert throws away the wrong half.
+
+**Scope is the feature's footprint.** Refactor what the feature touches — the method it must
+extend, the class it must call — and nothing else. Boy Scout scope, not a redesign.
+
+**The typical shape:** a new variant is coming — a "silver" tier next to gold and platinum, a
+new country, a new channel. Extract the seam now (the tier rule into its own method, the
+country lookup into a table) as a refactoring. Next week the variant is a one-line change at one
+place, instead of an edit to a 90-line method with five other concerns in it. Whether the seam
+then becomes a pattern is a separate decision at the YAGNI gate; the seam alone is usually
+enough.
+
+---
+
+## Parallel Change (expand / contract)
+
+For changing anything with **live callers** you do not control in one atomic step: a method
+signature used across the codebase, a public API, a message format, a database schema.
+
+1. **Expand** — add the new alongside the old. New parameter with a default, new method next to the old, new column next to the old, new API field or version. Nothing existing breaks.
+2. **Migrate** — move callers, consumers and data to the new shape, one at a time, each step shippable.
+3. **Contract** — remove the old once nothing reads it. Verify "nothing" with logs or traffic, not with grep alone.
+
+**Cost** — Two shapes coexist for a while, and the contract step is the one teams forget. Put a
+date or a ticket on it; an expand with no contract is permanent duplication.
+
+**Public APIs** — the same three steps with a longer middle. Add the field or the version,
+support both, deprecate with a date, remove. Consumers should be *tolerant readers* (ignore
+unknown fields, do not depend on ordering) so that expand steps are invisible to them.
+
+### Refactoring the schema
+
+Every schema refactoring is Parallel Change across **separate deploys**, because the code and
+the schema cannot change atomically and a bad migration cannot be reverted cheaply.
+
+```
+expand (add column/table)  →  backfill  →  verify counts and samples
+   →  switch reads  →  switch writes  →  contract (drop old), a deploy later
+```
+
+- **Never a destructive change in the same deploy as the code that stops needing it.** The drop goes out one deploy after the last reader is gone, so the previous release still works if you roll the code back.
+- **Before creating an index, check it does not already exist.** A migration that fails halfway leaves the indexes created before the failure in place; re-running it then fails on the first one. Guard every index creation with an existence check.
+- **Before a UNIQUE index, query for duplicates.** If any exist, the index creation fails. Clean the duplicates in the same migration, *before* the index statement, so the migration is self-contained and repeatable.
+- **A rollback undoes the last *successful* migration, not the one that failed.** Check the migration status before suggesting a rollback, and name exactly which migration it will undo.
+- **Production gets no trial-and-error.** Every migration is run against a copy of production data first. "Let's try it and see" is not a step.
+
+**Sources** — Scott Ambler & Pramod Sadalage, *Refactoring Databases*; Fowler,
+[Parallel Change](https://martinfowler.com/bliki/ParallelChange.html).
+
+---
+
+## Branch by Abstraction
+
+For replacing a large component **in place** — a payment integration, a search backend, a
+templating layer — without a long-lived branch that diverges from main for weeks.
+
+1. **Introduce an abstraction** over the old implementation. Callers keep working; they now go through the abstraction.
+2. **Move every caller** to the abstraction. Ship. Main is always green.
+3. **Build the new implementation** behind the same abstraction, on main, dark. A feature toggle chooses which one runs; flip it per environment, per tenant, per percentage.
+4. **Delete the old implementation** once the toggle has been fully on for long enough to trust.
+5. **Delete the abstraction** if it now has one implementation. It was scaffolding.
+
+**Cost** — Step 5 is the one that gets skipped, and the result is an interface with one
+implementation and a toggle nobody removes: Speculative Generality with a migration story. The
+abstraction is temporary by design; put its removal in the plan.
+
+**vs Strangler Fig** — Strangler Fig works at the *system* boundary, routing traffic between an
+old and a new system. Branch by Abstraction works *inside* one codebase, at a class or module
+seam. **vs Mikado** — Mikado discovers *what* must change first; Branch by Abstraction is *how*
+to make one large change without breaking the tree while you do it. They combine.
+
+**Source** — Fowler, [Branch by Abstraction](https://martinfowler.com/bliki/BranchByAbstraction.html);
+Paul Hammant, who named it.
 
 ---
 
@@ -172,7 +276,7 @@ was happening anyway and it targets exactly the code that changes most.
 
 - **The code is stable and nobody reads it.** Ugly code that has not changed in three years and has no pending work costs nothing. Refactoring it is pure risk with no return.
 - **It is scheduled for deletion.** Do not polish what you are about to remove.
-- **You are under acute deadline pressure.** Note the debt, ship, come back. Refactoring badly under time pressure is how the debt got there.
+- **You are under acute deadline pressure — and pinning the behaviour would cost more than the deadline allows.** Then do not refactor now: Sprout or Wrap the new code, note the debt, schedule the refactor. If pinning costs *less* than the refactor (a pure function over data, clear inputs and outputs), pin it and refactor — that is minutes. There is no third option in which code gets restructured without a net because "there was no time". Refactoring badly under time pressure is how the debt got there.
 - **You do not understand it yet.** Read it, write characterization tests, *then* restructure. Refactoring is not a substitute for understanding.
 - **It would be a rewrite.** If behaviour must change, that is a feature change with a design decision behind it — go through Path A in `SKILL.md`, not through this file.
 
@@ -195,5 +299,8 @@ them to notice direction over months, not to grade a pull request.
 ## Sources
 
 Michael Feathers, *Working Effectively with Legacy Code* (seams, characterization tests, sprout
-and wrap) · Martin Fowler, *Refactoring* · Ola Ellnestam & Daniel Brolund, *The Mikado Method* ·
+and wrap) · Martin Fowler, *Refactoring*, [Parallel Change](https://martinfowler.com/bliki/ParallelChange.html)
+and [Branch by Abstraction](https://martinfowler.com/bliki/BranchByAbstraction.html) · Kent Beck
+on preparatory refactoring ("make the change easy, then make the easy change") · Scott Ambler &
+Pramod Sadalage, *Refactoring Databases* · Ola Ellnestam & Daniel Brolund, *The Mikado Method* ·
 Refactoring catalogue: <https://refactoring.guru/refactoring>.

@@ -10,17 +10,21 @@ invocation deterministic. Copy everything between the markers.
 ```markdown
 ## Design decisions — mandatory gate
 
-Before designing or writing any non-trivial code, and before any refactor,
-invoke the `patterns-and-refactoring` skill.
+Before designing or writing any non-trivial code, before any refactor, and
+when reviewing a design or a pull request, invoke the `patterns-and-refactoring`
+skill.
 
 - TRIVIAL work (one-line fixes, config values, copy changes, bug fixes that
   introduce no abstraction) is explicitly exempt. Do not invoke the skill and
   do not narrate a decision for it.
 - For everything else, state the force (or the smell), the choice made, and the
-  alternative rejected — before writing code, not after.
+  alternative rejected — before writing code, not after. "No pattern needed"
+  is a decision and gets stated too.
 - Never refactor code that has no test coverage without first writing
   characterization tests that pin current behaviour.
 - Never refactor and change behaviour in the same commit.
+- After implementing, run the skill's verification audit (Step 6) and report
+  it, including when it finds nothing to change.
 ```
 <!-- END patterns-and-refactoring -->
 

@@ -1,13 +1,13 @@
 # patterns-and-refactoring
 
-**A Claude Code skill that forces a deliberate design decision before any code gets written — and a disciplined, test-backed process before any code gets restructured.**
+**A Claude Code skill that forces a deliberate design decision before any code gets written, a disciplined, test-backed process before any code gets restructured, and an audit of what was actually built afterwards.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-8A63D2)](https://docs.claude.com/en/docs/claude-code)
 [![Plugin](https://img.shields.io/badge/plugin-refactoring--guru%40christianpasinrey-8A63D2)](#recommended--plugin-from-the-marketplace)
 [![Standalone](https://img.shields.io/badge/dependencies-none-brightgreen)](#installation)
 [![Catalogues](https://img.shields.io/badge/catalogues-8-blue)](#whats-inside)
-[![References](https://img.shields.io/badge/reference%20files-23-blue)](#repository-layout)
+[![References](https://img.shields.io/badge/reference%20files-26-blue)](#repository-layout)
 [![Stacks](https://img.shields.io/badge/framework%20idioms-10%20stacks-blue)](#whats-inside)
 
 > [!NOTE]
@@ -42,6 +42,8 @@ It will also, reliably:
 - refactor and change behaviour in the same commit
 - restructure code that has no tests, and declare it improved
 - hand-roll a Chain of Responsibility next to the framework's own `Pipeline`
+- decide "no pattern needed", then ship a generic `CsvWriter` with one caller anyway
+- approve a PR labelled "just structure" that swallows exceptions behind eight files of scaffolding
 - and, most expensively, produce a design that *reads* sophisticated while making the next change harder
 
 None of this is a knowledge gap. The catalogue is well documented and well represented in training data. It is a **process** gap: the decision of *whether a pattern is warranted at all* gets skipped, because writing the code is more immediately rewarding than justifying its shape.
@@ -98,33 +100,42 @@ Those five behaviours are exactly what this skill encodes. AI assistants are now
 
 ## How it works
 
-Two entry paths, one triage gate.
+Three entry paths, one triage gate, one audit at the end.
 
 ```mermaid
 flowchart TD
     T{What triggered this?} -->|New code to design| A["<b>Path A</b><br/>Force → Pattern"]
     T -->|Existing code that hurts| B["<b>Path B</b><br/>Smell → Refactoring"]
+    T -->|Someone else's design or PR| C["<b>Path C</b><br/>Review"]
 
     A --> A1["1 · Name the force<br/><i>what varies, and who forces it?</i>"]
     A1 --> A2["2 · Route to a family"]
-    A2 --> A3["3 · Does the framework<br/>already provide it?"]
+    A2 --> A3["3 · Does the framework or<br/>the codebase already provide it?"]
     A3 --> A4["4 · YAGNI gate<br/><i>rule of three</i>"]
     A4 --> A5["5 · State force, choice,<br/>rejected alternative"]
 
     B --> B1["1 · Name the smell"]
     B1 --> B2["2 · Cover with tests<br/><i>characterization tests if none</i>"]
-    B2 --> B3["3 · Smallest refactoring,<br/>commit at every green"]
+    B2 --> B3["3 · Smallest refactoring,<br/>checkpoint at every green"]
     B3 --> B4{"Pattern emerges<br/>naturally?"}
     B4 -->|Yes| A4
     B4 -->|No| B5["Stop — refactoring<br/>was enough"]
 
+    C --> C1["1 · Behaviour first"]
+    C1 --> C2["2 · Run the gate backwards<br/>on each added abstraction"]
+    C2 --> C3["3 · Verdict · blocking · design ·<br/>direct alternative · nits"]
+
     A5 --> Z[Implement]
     B5 --> Z
+    Z --> V["<b>6 · Verify</b><br/>audit the code against the decision"]
+    C3 --> V
 
     style A fill:#1f6feb,color:#fff
     style B fill:#8957e5,color:#fff
+    style C fill:#1a7f37,color:#fff
     style A4 fill:#da3633,color:#fff
     style B2 fill:#da3633,color:#fff
+    style V fill:#da3633,color:#fff
 ```
 
 ### The core rule of Path A
@@ -142,6 +153,18 @@ That is the *axis of change*. Name it in plain words before naming any pattern. 
 > **Refactoring changes structure, never behaviour.**
 
 If behaviour changes it is a rewrite, and it needs its own tests, its own review, and its own commit. Tests come first, always. When they do not exist, characterization tests come first — pinning what the code does *today*, bugs included.
+
+### The core rule of Path C
+
+> **Behaviour outranks design, and a request to remove an abstraction comes with the smaller shape.**
+
+A review re-triages the diff independently — "just structure" PRs routinely hide behaviour — reads for what fails before what is ugly, then runs the YAGNI gate backwards on every interface, factory, wrapper and DTO the author added. Each finding names the anti-pattern or smell and ends with a sketch of the direct version, sized.
+
+### The rule that closes every path
+
+> **The decision was made before the code. The damage happens during it.**
+
+Step 6 audits the diff against the decision with numbers, not impressions: interfaces added versus implementations, generic components versus consumers, new files versus triage level, whether the rejected alternative crept back in, and whether the tests exercise the axis of change. The audit is expected to fail about one time in three; one that only ever says "all good" is not being run.
 
 ### Proportionality
 
@@ -170,12 +193,15 @@ Eight catalogues, cross-referenced, with original commentary focused on **cost**
 | Architectural patterns | Layering, topologies, multi-tenancy | [`architectural.md`](skills/patterns-and-refactoring/references/architectural.md) |
 | Domain-Driven Design | Strategic + tactical | [`ddd-patterns.md`](skills/patterns-and-refactoring/references/ddd-patterns.md) |
 
-Plus four files that exist to keep the rest honest:
+Plus seven files that exist to keep the rest honest:
 
 | File | Purpose |
 |---|---|
-| [`refactoring-workflow.md`](skills/patterns-and-refactoring/references/refactoring-workflow.md) | Seams, characterization tests, the Mikado Method, legacy modernization sequencing, and when *not* to refactor |
-| [`antipatterns.md`](skills/patterns-and-refactoring/references/antipatterns.md) | Pattern anti-patterns and structural anti-patterns, with a 7-point pre-flight checklist |
+| [`decision-templates.md`](skills/patterns-and-refactoring/references/decision-templates.md) | The exact shape of every output — NO-PATTERN, STANDARD (both paths), ARCHITECTURAL as a lightweight ADR, the review, the verification report — each with a worked example |
+| [`verification.md`](skills/patterns-and-refactoring/references/verification.md) | The post-implementation audit: abstraction counts, test audit, simplification pass, and the ten shapes that creep into AI-assisted code unannounced |
+| [`testing-patterns.md`](skills/patterns-and-refactoring/references/testing-patterns.md) | Which tests each pattern owes, test doubles and when a mock is a design smell, characterization and approval nets, test smells, the honest pyramid |
+| [`refactoring-workflow.md`](skills/patterns-and-refactoring/references/refactoring-workflow.md) | Seams, characterization tests, preparatory refactoring, Parallel Change (expand/contract, including schemas), Branch by Abstraction, the Mikado Method, legacy modernization sequencing, and when *not* to refactor |
+| [`antipatterns.md`](skills/patterns-and-refactoring/references/antipatterns.md) | Pattern anti-patterns, structural anti-patterns, the ten principles most often cited to justify one, and the pre-flight checklist |
 | [`framework-idioms.md`](skills/patterns-and-refactoring/references/framework-idioms.md) | Router + cross-stack table, into **10 per-stack files** covering what your framework already implements — read before hand-rolling anything |
 | [`concurrency-patterns.md`](skills/patterns-and-refactoring/references/concurrency-patterns.md) · [`functional-patterns.md`](skills/patterns-and-refactoring/references/functional-patterns.md) · [`frontend-patterns.md`](skills/patterns-and-refactoring/references/frontend-patterns.md) | Domain-specific catalogues |
 
@@ -197,9 +223,9 @@ Every entry carries **Cost** and **Do NOT use when**. That is the point of the c
 <details>
 <summary><b>Context cost — how this stays cheap</b></summary>
 
-`SKILL.md` is the routing layer and the only file loaded when the skill triggers. The 13 reference files are loaded **on demand**, one at a time, once the relevant family is already narrowed.
+`SKILL.md` is the routing layer and the only file loaded when the skill triggers (about 26 KB, roughly 6,500 tokens). The 16 reference files and 10 stack files are loaded **on demand**, one at a time, once the relevant family is already narrowed.
 
-A typical STANDARD-level decision loads `SKILL.md` plus at most one reference. An ARCHITECTURAL decision may load two or three. The full corpus is never loaded at once, and never sits in your context between tasks.
+A typical STANDARD-level decision loads `SKILL.md`, the stack's idioms file, and at most one catalogue. An ARCHITECTURAL decision may load two or three. The full corpus is never loaded at once, and never sits in your context between tasks.
 
 </details>
 
@@ -307,15 +333,18 @@ Skills are invoked at the model's discretion based on their `description`. To ma
 ```markdown
 ## Design decisions — mandatory gate
 
-Before designing or writing any non-trivial code, and before any refactor,
-invoke the `patterns-and-refactoring` skill.
+Before designing or writing any non-trivial code, before any refactor, and
+when reviewing a design or a pull request, invoke the `patterns-and-refactoring`
+skill.
 
 - TRIVIAL work (one-line fixes, config, copy) is explicitly exempt — do not
   invoke the skill and do not narrate a decision for it.
 - For everything else, state the force (or the smell), the choice made, and
-  the alternative rejected, before writing code.
+  the alternative rejected, before writing code. "No pattern needed" is a
+  decision and gets stated too.
 - Never refactor code that has no test coverage without first writing
   characterization tests.
+- After implementing, run the skill's verification audit (Step 6) and report it.
 ```
 
 > [!TIP]
@@ -359,6 +388,38 @@ Once installed, it works without being asked for. Some examples of what changes:
 
 </details>
 
+<details>
+<summary><b>Before / after — reviewing a pull request</b></summary>
+
+**Prompt:** *"Review PR #412 — it's just structure, quick approve please, standup in 15 minutes."* The PR adds a repository interface with one implementation, a channel strategy factory that ignores its argument, a DTO for an internal call and a static singleton, around a welcome-email service.
+
+**Without the skill:**
+> A list of observations of varying weight, in the order the files were read. Whether the swallowed `\Throwable` is mentioned before the naming nits depends on the run. The direct alternative may or may not appear.
+
+**With the skill:**
+> **Verdict:** request changes — two silent-failure bugs, and eight files of scaffolding for a behaviour the framework already ships.
+> **Blocking (behaviour):** `catch (\Throwable) {}` hides a null-user dereference and any mail failure; no container binding for the interface.
+> **Design**, one section per justification the author gave: *"so we can swap the ORM later"* → one implementation, returns Eloquent models, cannot deliver the swap it promises. *"so adding SMS is trivial"* → `Notification::via()` already is that Strategy. *"reachable from anywhere"* → that is the part to refuse.
+> **The direct alternative:** three files, ~25 lines — enum cast, queued `WelcomeNotification`, `onboard(User $user)` — with its force and rejected line.
+> **Nits**, labelled as nits.
+
+</details>
+
+<details>
+<summary><b>What the verification step catches</b></summary>
+
+**Task:** the CSV export above, decided as NO-PATTERN.
+
+**What got written anyway:** an `OrdersExport` class holding the query, a `CsvExport` class "that knows nothing about orders" with one consumer, a controller, two test files, a view — seven files for a download button.
+
+**Step 6 audit:**
+> **Audit:** 0 interfaces; 7 files for a STANDARD decision; `CsvExport` has one consumer.
+> **Simplified:** writer inlined into the controller method, `rowFor(Order)` kept as the seam. Three files.
+
+The decision was right. The code drifted from it while being typed. That is what the audit exists for.
+
+</details>
+
 You can also invoke it explicitly:
 
 ```
@@ -385,6 +446,9 @@ refactoring.guru-skill/
     └── patterns-and-refactoring/
         ├── SKILL.md              # routing layer — the only always-loaded file
         └── references/
+            ├── decision-templates.md    # output shapes + worked examples
+            ├── verification.md          # post-implementation audit
+            ├── testing-patterns.md      # what tests each pattern owes
             ├── gof-catalog.md
             ├── architectural.md
             ├── enterprise-patterns.md
@@ -456,6 +520,28 @@ That negative space is the entire value of this skill.
 </details>
 
 <details>
+<summary><b>Why there is a verification step after the code</b></summary>
+
+The decision gate works. In testing, the model reliably wrote "no pattern needed — direct code" before implementing a CSV export, and then produced a generic writer class with one consumer, a second class holding the query, and seven files. Nothing in the decision was wrong; the abstractions accreted while typing, as they do for humans.
+
+A gate that only runs before the code cannot see that. Step 6 audits the diff against the decision with counts — interfaces versus implementations, consumers per generic component, files per triage level — and expects to find something roughly one time in three.
+
+**Rejected:** trusting the up-front decision. It was the cheaper design, and it was observed not to hold.
+
+</details>
+
+<details>
+<summary><b>Why review is its own path</b></summary>
+
+The description always said "reviewing a design" and the model, given a PR to review, improvised: it ran Path A backwards on each abstraction, invented a review layout, and decided by itself whether the swallowed exception came before the naming nits. It did well, and did it differently every time.
+
+Path C fixes the order — behaviour first, then one section per justification the author gave, then the direct alternative sized in files, then nits — because a review missing the direct alternative is criticism without a request, and one that leads with design over a silent-failure bug has its priorities wrong.
+
+**Rejected:** leaving review to the general-purpose code-review tooling. That tooling finds bugs well; it does not ask whether the interface has a second implementation.
+
+</details>
+
+<details>
 <summary><b>Why it has no dependencies</b></summary>
 
 The skill slots between "requirements are settled" and "code gets written". Anything that couples it to a specific plugin, workflow, or toolchain narrows where it can be used for no gain. It is Markdown; it composes with whatever process you already run.
@@ -490,6 +576,8 @@ Useful contributions:
 - [x] ~~Framework idioms for the major server and frontend stacks~~ — 10 stacks covered
 - [ ] Framework idioms for stacks not yet covered (Elixir/Phoenix, Swift, Flutter, Angular, Laravel Livewire specifics)
 - [ ] Additional anti-patterns with concrete symptoms and cures
+- [ ] More worked examples in `decision-templates.md`, especially ARCHITECTURAL ones from non-PHP stacks
+- [ ] Shapes the verification audit misses — open an issue with the diff it let through
 - [ ] Corrections — particularly where a "do NOT use when" is wrong or too absolute, or where a framework idiom is out of date
 
 Open an issue before a large addition so the scope can be agreed first.
@@ -520,6 +608,8 @@ Taxonomies and catalogues referenced:
 | *Refactoring* — Martin Fowler (1999, 2nd ed. 2018) | Refactoring catalogue and code smells |
 | [*Patterns of Enterprise Application Architecture*](https://martinfowler.com/eaaCatalog/) — Martin Fowler | Enterprise catalogue |
 | *Working Effectively with Legacy Code* — Michael Feathers | Seams, characterization tests, sprout & wrap |
+| *xUnit Test Patterns* — Gerard Meszaros · *Unit Testing Principles* — Vladimir Khorikov | Test doubles, test smells |
+| *Refactoring Databases* — Scott Ambler & Pramod Sadalage · Fowler on [Parallel Change](https://martinfowler.com/bliki/ParallelChange.html) and [Branch by Abstraction](https://martinfowler.com/bliki/BranchByAbstraction.html) | Expand/contract, schema refactoring, in-place replacement |
 | *Domain-Driven Design* — Eric Evans | Strategic and tactical DDD |
 | [*Cloud Design Patterns*](https://learn.microsoft.com/azure/architecture/patterns/) — Microsoft | 44 cloud patterns |
 | [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com) — Hohpe & Woolf | 65 messaging patterns |

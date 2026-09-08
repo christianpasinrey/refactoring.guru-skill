@@ -134,6 +134,43 @@ The pattern with the worst benefit-to-damage ratio in the catalogue.
 - **Cure** — Profile first. The bottleneck is almost never where it is assumed to be — in web applications it is usually N+1 queries or a missing index, not the algorithm someone rewrote.
 - **Note** — This does not license *pessimisation*: choosing an obviously worse algorithm or writing an N+1 query when the correct version costs nothing extra is not "avoiding premature optimization."
 
+### Utility dumping ground
+
+- **Symptom** — `helpers.php`, `utils.ts`, `Common`, `Misc`: a file where functions go when nobody decided where they belong. It only grows.
+- **Why it fails** — Nothing in the name says what is inside, so nothing is found and everything is duplicated. The functions usually operate on data that has a home elsewhere — that is Feature Envy with a generic address.
+- **Cure** — Move each function next to the data it uses (Move Method). A helper with one caller is inlined. Genuinely generic pure functions get a module named for what they do (`Money`, `Slug`), never for being leftovers.
+
+### Boolean parameter trap
+
+- **Symptom** — `send($user, true, false)`; `export($orders, $withHeaders = true, $compress = false)`. The call site is unreadable and every new flag doubles the paths through the method.
+- **Cure** — Replace Parameter with Explicit Methods (`sendNow()`, `sendQueued()`), or a named enum / options object when the flags are genuinely independent. Two booleans that are never both true are one enum.
+
+### Soft-coding
+
+- **Symptom** — Business rules pushed into configuration files or database "rules" tables so that "nobody has to deploy to change them". Then nobody can read them, test them, version them, or debug them. The inner-platform effect's little sibling.
+- **Cure** — Code for logic, configuration for values that operations must change without a deploy (thresholds, endpoints, feature flags). If a rule needs a branch, it is code.
+
+---
+
+## Part 3 — Principles misapplied
+
+Every principle below is correct. Each one is also the most-cited justification for a specific
+anti-pattern. The principle is not the problem; using it to skip the question *"what problem am
+I solving?"* is.
+
+| Principle | Misapplied looks like | Cure |
+|---|---|---|
+| **Single Responsibility** | Splitting until every class has one method: a `Validator`, a `Normalizer`, a `Persister` for a three-line operation. Lazy Class ×N | One *reason to change* per class, not one method. Inline Class until each class does a coherent job |
+| **Open/Closed** | Extension points nobody extends: hooks, abstract methods, plugin registries with one plugin. Speculative Generality with a citation | Close it. Open it when the second extension is real |
+| **Liskov Substitution** | A subclass overriding inherited methods to throw `NotSupported`. Refused Bequest | Replace Inheritance with Delegation; extract the genuinely shared part into a superclass or interface |
+| **Interface Segregation** | One interface per class, mirroring its full method set, "for mocking" | Interfaces per *consumer*, sized to what that consumer calls. Often one or two methods |
+| **Dependency Inversion** | An interface with exactly one implementation "so we can inject it" | Inject the concrete class — the container does not need an interface. Add one when the second implementation or a genuine module boundary exists |
+| **DRY** | Unifying two fragments that look alike but change for different reasons. The shared helper then grows flags for each caller | Rule of Three, and "would they always change together?" Coincidental duplication stays duplicated |
+| **Law of Demeter** | Hide Delegate applied everywhere: wrapper methods that forward one call. Middle Man | Judge by what the client should *know*, not by dot count. Fluent builders and query chains are not violations |
+| **Command–Query Separation** | Methods that return a value *and* mutate — `getOrCreate()`, `nextId()` that increments | Separate Query from Modifier. A method safe to call twice is a method safe to reorder, cache, and test |
+| **KISS / YAGNI** | Cited to refuse a requirement that is real, named, and on the roadmap | YAGNI is about *guessed* needs. A named source of variation passes the gate; do the work |
+| **Composition over inheritance** | Six delegates deep: an object that forwards to an object that forwards to an object. Middleware soup in disguise | Collapse layers that always appear together. Composition is not free either; each layer needs an independent reason to exist |
+
 ---
 
 ## The honest checklist
@@ -147,6 +184,7 @@ Before adding any pattern or abstraction:
 - [ ] Does my framework already provide this? ([framework-idioms.md](framework-idioms.md))
 - [ ] Does this make the code **easier** to test, not harder?
 - [ ] Can I delete this later if I am wrong, or has it become load-bearing?
+- [ ] After implementing: does the code still match this decision? ([verification.md](verification.md))
 
 Any "no" means write the direct code and revisit when the need is real.
 

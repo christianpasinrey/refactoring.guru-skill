@@ -32,6 +32,16 @@ normal move, not an admission of error.
 **Order that works:** Extract Variable to name the pieces → Replace Temp with Query to unblock
 → Extract Method to carve out the section → Rename Method once its real job is visible.
 
+**Traps when extracting** — each one passes a loosely-typed test and fails in production:
+
+- **Return-type coercion.** An extracted method declared `: float` silently turns the `int` `0` the caller used to expose into `0.0`. Pin outputs with strict equality, types included, *before* extracting — and **preserve the wart** during the refactor (`int|float`, or no declared type). Normalising the output shape is a behaviour change for its own commit, after callers are checked.
+- **Parameter-type tightening.** Declaring `string $country` on the extracted method turns a `null` that used to fall through to the default branch into a `TypeError`. Leave parameters untyped during the extraction if the callers' input is untyped; tighten them in a later commit, once the inputs are pinned or validated.
+- **Null vs empty vs falsy.** A fragment that returned `null` in one branch now returns `''` or `[]` because the new signature demanded a type.
+- **Exception scope moves.** A `try` that wrapped more or less than the extracted fragment now catches different things. Extract the whole `try`, or none of it.
+- **By-reference parameters and mutated locals.** A local the fragment assigned becomes a copy inside the new method; the caller stops seeing the change.
+- **Evaluation order and short-circuit.** Extracting a sub-expression of `a() && b()` into a variable evaluates `b()` unconditionally.
+- **A temp assigned twice.** The extracted code read the second meaning; the caller passes the first. Split Temporary Variable first.
+
 ---
 
 ## 2. Moving Features Between Objects

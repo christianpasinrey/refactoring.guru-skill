@@ -51,7 +51,7 @@ while the domain must be clean.
 Do not mix them arbitrarily. If you are on Eloquent, the natural design is Active Record plus a
 Service Layer — not Eloquent hidden behind a Repository pretending to be a Data Mapper, which
 gives you the cost of both and the benefit of neither. See
-[framework-idioms.md](framework-idioms.md#repository-over-eloquent-when-is-it-justified).
+[idioms/laravel-php.md](idioms/laravel-php.md#repository-over-eloquent-when-is-it-justified).
 
 ---
 
